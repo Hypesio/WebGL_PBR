@@ -1,6 +1,7 @@
 import { GUI } from 'dat.gui';
 import { mat4, vec3 } from 'gl-matrix';
 import { Camera } from './camera';
+import { SphereGeometry } from './geometries/sphere';
 import { TriangleGeometry } from './geometries/triangle';
 import { GLContext } from './gl';
 import { PBRShader } from './shader/pbr-shader';
@@ -25,6 +26,7 @@ class Application {
   private _context: GLContext;
 
   private _shader: PBRShader;
+  private _sphere: SphereGeometry;
   private _geometry: TriangleGeometry;
   private _uniforms: Record<string, UniformType | Texture>;
 
@@ -46,8 +48,13 @@ class Application {
     this._geometry = new TriangleGeometry();
     this._uniforms = {
       'uMaterial.albedo': vec3.create(),
-      'uModel.localToProjection': mat4.create()
+      'uMaterial.kD': 0.7,
+      'uModel.localToProjection': mat4.create(),
+      'viewPosition':vec3.create(),
+      'lightPosition':vec3.create(),
     };
+
+    this._sphere = new SphereGeometry(0.3, 20, 20); 
 
     this._shader = new PBRShader();
     this._textureExample = null;
@@ -64,6 +71,7 @@ class Application {
    */
   async init() {
     this._context.uploadGeometry(this._geometry);
+    this._context.uploadGeometry(this._sphere);
     this._context.compileProgram(this._shader);
 
     // Example showing how to load a texture and upload it to GPU.
@@ -117,6 +125,13 @@ class Application {
       props.albedo[1] / 255,
       props.albedo[2] / 255
     );
+
+    // Set the camera position for the shaders
+    vec3.set(this._uniforms['viewPosition'] as vec3, 0, 0, 1);
+
+    // Set light position
+    vec3.set(this._uniforms['lightPosition'] as vec3, 1, 2, 4);
+
     // Sets the viewProjection matrix.
     // **Note**: if you want to modify the position of the geometry, you will
     // need to take the matrix of the mesh into account here.
@@ -127,6 +142,7 @@ class Application {
 
     // Draws the triangle.
     this._context.draw(this._geometry, this._shader, this._uniforms);
+    this._context.draw(this._sphere, this._shader, this._uniforms);
   }
 
   /**

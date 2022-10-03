@@ -16,6 +16,7 @@ out vec3 vNormalWS;
 #ifdef USE_UV
   out vec2 vUv;
 #endif // USE_UV
+out vec3 fragPosition; 
 
 /**
  * Uniforms List
@@ -33,5 +34,7 @@ main()
 {
   vec4 positionLocal = vec4(in_position, 1.0);
   gl_Position = uModel.localToProjection * positionLocal;
+  vNormalWS = in_normal;
+  fragPosition = gl_Position.rgb;
 }
 `;
