@@ -35,6 +35,6 @@ main()
   vec4 positionLocal = vec4(in_position, 1.0);
   gl_Position = uModel.localToProjection * positionLocal;
   vNormalWS = in_normal;
-  fragPosition = gl_Position.rgb;
+  fragPosition = in_position;
 }
 `;

@@ -48,7 +48,9 @@ class Application {
     this._geometry = new TriangleGeometry();
     this._uniforms = {
       'uMaterial.albedo': vec3.create(),
-      'uMaterial.kD': 0.7,
+      'uMaterial.roughness': 0.7,
+      'uMaterial.ior': 1.0,
+      'uMaterial.metallic': 1.0,
       'uModel.localToProjection': mat4.create(),
       'viewPosition':vec3.create(),
       'lightPosition':vec3.create(),
@@ -130,7 +132,7 @@ class Application {
     vec3.set(this._uniforms['viewPosition'] as vec3, 0, 0, 1);
 
     // Set light position
-    vec3.set(this._uniforms['lightPosition'] as vec3, 1, 2, 4);
+    vec3.set(this._uniforms['lightPosition'] as vec3, 2, 2, 2);
 
     // Sets the viewProjection matrix.
     // **Note**: if you want to modify the position of the geometry, you will
