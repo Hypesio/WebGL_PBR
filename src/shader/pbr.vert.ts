@@ -25,6 +25,7 @@ out vec3 fragPosition;
 struct Model
 {
   mat4 localToProjection;
+  mat4 modelMat;
 };
 
 uniform Model uModel;
@@ -32,7 +33,7 @@ uniform Model uModel;
 void
 main()
 {
-  vec4 positionLocal = vec4(in_position, 1.0);
+  vec4 positionLocal = uModel.modelMat * vec4(in_position, 1.0);
   gl_Position = uModel.localToProjection * positionLocal;
   vNormalWS = in_normal;
   fragPosition = in_position;

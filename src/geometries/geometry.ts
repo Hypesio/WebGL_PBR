@@ -2,6 +2,8 @@
  * @author {DavidPeicho}
  */
 
+import { vec3 } from "gl-matrix";
+
 /**
  * Class containing geometric data to send to the GPU.
  *
@@ -67,11 +69,12 @@ export class Geometry {
    */
   private _mode: number;
 
+
   public constructor(
     positions: Float32Array,
     normals: Float32Array,
     uvs: Float32Array | null,
-    indices: Uint8Array | Uint16Array | Uint32Array,
+    indices: Uint8Array | Uint16Array | Uint32Array, 
     mode = WebGL2RenderingContext.TRIANGLES
   ) {
     this._positions = positions;

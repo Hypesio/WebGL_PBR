@@ -1,6 +1,7 @@
 import { GUI } from 'dat.gui';
 import { mat4, vec3 } from 'gl-matrix';
 import { Camera } from './camera';
+import { GameObject } from './game-object';
 import { SphereGeometry } from './geometries/sphere';
 import { TriangleGeometry } from './geometries/triangle';
 import { GLContext } from './gl';
@@ -24,10 +25,9 @@ class Application {
    * @private
    */
   private _context: GLContext;
-
+  private _sphereGeometry: SphereGeometry; 
   private _shader: PBRShader;
-  private _sphere: SphereGeometry;
-  private _geometry: TriangleGeometry;
+  private _gameObjects: GameObject[];
   private _uniforms: Record<string, UniformType | Texture>;
 
   private _textureExample: Texture2D<HTMLElement> | null;
@@ -45,18 +45,23 @@ class Application {
     this._context = new GLContext(canvas);
     this._camera = new Camera();
 
-    this._geometry = new TriangleGeometry();
     this._uniforms = {
       'uMaterial.albedo': vec3.create(),
       'uMaterial.roughness': 0.7,
       'uMaterial.ior': 1.0,
       'uMaterial.metallic': 1.0,
       'uModel.localToProjection': mat4.create(),
+      'uModel.modelMat': mat4.create(),
       'viewPosition':vec3.create(),
       'lightPosition':vec3.create(),
     };
 
-    this._sphere = new SphereGeometry(0.3, 20, 20); 
+    this._sphereGeometry = new SphereGeometry(0.3, 20, 20);
+
+    this._gameObjects = [];
+    this._gameObjects.push(new GameObject(this._sphereGeometry));
+    this._gameObjects[0].transform.position = vec3.set(vec3.create(),2, -0.6, 2);
+    this._gameObjects[0].update();
 
     this._shader = new PBRShader();
     this._textureExample = null;
@@ -72,8 +77,7 @@ class Application {
    * Initializes the application.
    */
   async init() {
-    this._context.uploadGeometry(this._geometry);
-    this._context.uploadGeometry(this._sphere);
+    this._context.uploadGeometry(this._sphereGeometry);
     this._context.compileProgram(this._shader);
 
     // Example showing how to load a texture and upload it to GPU.
@@ -91,7 +95,9 @@ class Application {
    * Called at every loop, before the [[Application.render]] method.
    */
   update() {
-    /** Empty. */
+    this._gameObjects.forEach(go => {
+      go.update();
+    });
   }
 
   /**
@@ -128,8 +134,9 @@ class Application {
       props.albedo[2] / 255
     );
 
+    
     // Set the camera position for the shaders
-    vec3.set(this._uniforms['viewPosition'] as vec3, 0, 0, 1);
+    vec3.set(this._uniforms['viewPosition'] as vec3, camera.transform.position[0],  camera.transform.position[1],  camera.transform.position[2]);
 
     // Set light position
     vec3.set(this._uniforms['lightPosition'] as vec3, 2, 2, 2);
@@ -142,9 +149,17 @@ class Application {
       camera.localToProjection
     );
 
-    // Draws the triangle.
-    this._context.draw(this._geometry, this._shader, this._uniforms);
-    this._context.draw(this._sphere, this._shader, this._uniforms);
+    // Draws all gameobjects
+    this._gameObjects.forEach(go => {
+      go.draw(this._context, this._shader, this._uniforms);
+    });
+
+    // Reset model value changed by gameobjects
+    mat4.copy(
+      this._uniforms['uModel.modelMat'] as mat4,
+      mat4.create()
+    );
+    
   }
 
   /**
