@@ -1,10 +1,11 @@
-import { mat4 } from 'gl-matrix';
+import { mat4, vec3 } from 'gl-matrix';
 import { Geometry } from './geometries/geometry';
 import { Transform } from './transform';
 import { GLContext } from './gl';
 import { PBRShader } from './shader/pbr-shader';
 import { Texture } from './textures/texture';
 import { UniformType } from './types';
+import { Material } from './material';
 
 
 /**
@@ -14,12 +15,15 @@ export class GameObject {
   public geometry: Geometry;
   public transform: Transform;
   public worldToLocal: mat4;
+  public material: Material;
 
-  public constructor(geometry: Geometry) {
+  public constructor(geometry: Geometry, material: Material) {
     this.transform = new Transform();
     this.worldToLocal = mat4.create();
     this.geometry = geometry;
+    this.material = material;
   }
+
 
   public update() {
     this.transform.combine();
@@ -32,7 +36,10 @@ export class GameObject {
         this.worldToLocal
       );
 
-    context.draw(this.geometry, shader, uniforms);
+      vec3.copy(uniforms['uMaterial.albedo'] as vec3, this.material.albedo);
+      uniforms['uMaterial.roughness'] = this.material.roughness;
+      uniforms['uMaterial.metallic'] = this.material.roughness;
 
+    context.draw(this.geometry, shader, uniforms);
   }
 }

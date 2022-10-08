@@ -2,9 +2,12 @@ import { GUI } from 'dat.gui';
 import { mat4, vec3 } from 'gl-matrix';
 import { Camera } from './camera';
 import { GameObject } from './game-object';
+import { Geometry } from './geometries/geometry';
 import { SphereGeometry } from './geometries/sphere';
 import { TriangleGeometry } from './geometries/triangle';
 import { GLContext } from './gl';
+import { PointLight } from './lights/lights';
+import { setupScenePointLight, setupSceneSpheres } from './scene-setup';
 import { PBRShader } from './shader/pbr-shader';
 import { Texture, Texture2D } from './textures/texture';
 import { UniformType } from './types';
@@ -25,9 +28,10 @@ class Application {
    * @private
    */
   private _context: GLContext;
-  private _sphereGeometry: SphereGeometry; 
+  private _geometries: Geometry[]; 
   private _shader: PBRShader;
   private _gameObjects: GameObject[];
+  private _lights: PointLight[];
   private _uniforms: Record<string, UniformType | Texture>;
 
   private _textureExample: Texture2D<HTMLElement> | null;
@@ -48,20 +52,24 @@ class Application {
     this._uniforms = {
       'uMaterial.albedo': vec3.create(),
       'uMaterial.roughness': 0.7,
-      'uMaterial.ior': 1.0,
       'uMaterial.metallic': 1.0,
       'uModel.localToProjection': mat4.create(),
       'uModel.modelMat': mat4.create(),
       'viewPosition':vec3.create(),
-      'lightPosition':vec3.create(),
     };
 
-    this._sphereGeometry = new SphereGeometry(0.3, 20, 20);
+    // Init geometries
+    this._geometries = [];
+    this._geometries.push(new SphereGeometry(0.5, 20, 20));
 
-    this._gameObjects = [];
-    this._gameObjects.push(new GameObject(this._sphereGeometry));
-    this._gameObjects[0].transform.position = vec3.set(vec3.create(),2, -0.6, 2);
-    this._gameObjects[0].update();
+    // Init objects
+    this._gameObjects = setupSceneSpheres(this._geometries[0]);
+
+    // Init point lights
+    this._lights = setupScenePointLight(); 
+    for (let i = 0; i < this._lights.length; i+=1) {
+      this._uniforms["lightsPosition[" + i.toString() + "]"] = vec3.create();
+    }
 
     this._shader = new PBRShader();
     this._textureExample = null;
@@ -77,7 +85,10 @@ class Application {
    * Initializes the application.
    */
   async init() {
-    this._context.uploadGeometry(this._sphereGeometry);
+    this._geometries.forEach(geometry => {
+      this._context.uploadGeometry(geometry);
+    });
+    
     this._context.compileProgram(this._shader);
 
     // Example showing how to load a texture and upload it to GPU.
@@ -138,8 +149,13 @@ class Application {
     // Set the camera position for the shaders
     vec3.set(this._uniforms['viewPosition'] as vec3, camera.transform.position[0],  camera.transform.position[1],  camera.transform.position[2]);
 
-    // Set light position
-    vec3.set(this._uniforms['lightPosition'] as vec3, 2, 2, 2);
+    // Set lights position
+    let i = 0;
+    this._lights.forEach(light => {
+      vec3.copy(this._uniforms["lightsPosition[" + i.toString() + "]"] as vec3, light.positionWS);
+      //console.log("lightsPosition[" + i.toString() + "]");
+      i+=1;
+    });
 
     // Sets the viewProjection matrix.
     // **Note**: if you want to modify the position of the geometry, you will
