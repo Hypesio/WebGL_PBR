@@ -11,7 +11,7 @@ export function setupSceneSpheres(geometry: Geometry): GameObject[] {
     let height = 5; 
     let lenBorder = 5; 
     let distanceSphere = lenBorder / (width - 1); 
-    let increaseParam = 1 / (width - 1);
+    let increaseParam = 1.0 / (width - 1.0);
     let startPosition = vec3.set(vec3.create(), -lenBorder/2, -lenBorder/2, 7);
     let position = vec3.set(vec3.create(), -lenBorder/2, -lenBorder/2, 7);
 
@@ -23,7 +23,7 @@ export function setupSceneSpheres(geometry: Geometry): GameObject[] {
         for(let j = 0; j < width; j++) {
             position[1] = startPosition[1] + distanceSphere * j;
 
-            let metallic = increaseParam * i;
+            let metallic = 1.0 - increaseParam * i;
             let roughness = increaseParam * j;
             let material = new Material(metallic, vec3.set(vec3.create(),0.7, 0.7, 0.7), roughness);
             let go = new GameObject(geometry, material);
@@ -38,13 +38,13 @@ export function setupSceneSpheres(geometry: Geometry): GameObject[] {
 export function setupScenePointLight(): PointLight[] {
     let lights = []; 
     lights.push(new PointLight());
-    lights[0].positionWS = vec3.set(vec3.create(),-2, -2, 1); 
+    lights[0].positionWS = vec3.set(vec3.create(),1, 1, 1); 
     lights.push(new PointLight());
-    lights[1].positionWS = vec3.set(vec3.create(),-2, -2, 1); 
+    lights[1].positionWS = vec3.set(vec3.create(),-1, -1, 1); 
     lights.push(new PointLight());
-    lights[2].positionWS = vec3.set(vec3.create(),2, -2, 0); 
+    lights[2].positionWS = vec3.set(vec3.create(),0, 0, 1); 
     lights.push(new PointLight());
-    lights[3].positionWS = vec3.set(vec3.create(),2, 2, 0); 
+    lights[3].positionWS = vec3.set(vec3.create(),1, 1, 1); 
 
     return lights;
 }

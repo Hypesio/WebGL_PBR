@@ -67,7 +67,7 @@ export class GLContext {
 
   public constructor(canvas: HTMLCanvasElement) {
     this._gl = canvas.getContext('webgl2') as WebGL2RenderingContext;
-    this._gl.clearColor(0.1, 0.1, 0.1, 1.0);
+    this._gl.clearColor(0.53, 0.81, 0.92, 1.0);
 
     this._geometries = new WeakMap();
     this._textures = new WeakMap();

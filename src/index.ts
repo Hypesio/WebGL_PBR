@@ -51,11 +51,11 @@ class Application {
 
     this._uniforms = {
       'uMaterial.albedo': vec3.create(),
-      'uMaterial.roughness': 0.7,
+      'uMaterial.roughness': 0.0,
       'uMaterial.metallic': 1.0,
       'uModel.localToProjection': mat4.create(),
       'uModel.modelMat': mat4.create(),
-      'viewPosition':vec3.create(),
+      'viewPosition': vec3.create(),
     };
 
     // Init geometries
@@ -67,9 +67,6 @@ class Application {
 
     // Init point lights
     this._lights = setupScenePointLight(); 
-    for (let i = 0; i < this._lights.length; i+=1) {
-      this._uniforms["lightsPosition[" + i.toString() + "]"] = vec3.create();
-    }
 
     this._shader = new PBRShader();
     this._textureExample = null;
@@ -137,13 +134,12 @@ class Application {
 
     const props = this._guiProperties;
 
-    // Set the color from the GUI into the uniform list.
-    vec3.set(
-      this._uniforms['uMaterial.albedo'] as vec3,
-      props.albedo[0] / 255,
-      props.albedo[1] / 255,
-      props.albedo[2] / 255
-    );
+   
+
+    // Set the color from the GUI into the materials
+    this._gameObjects.forEach(go => {
+      go.material.albedo = vec3.set(vec3.create(), props.albedo[0] / 255,props.albedo[1] / 255, props.albedo[2] / 255);
+    });
 
     
     // Set the camera position for the shaders
@@ -151,11 +147,20 @@ class Application {
 
     // Set lights position
     let i = 0;
+    //console.log(this._lights.length)
     this._lights.forEach(light => {
-      vec3.copy(this._uniforms["lightsPosition[" + i.toString() + "]"] as vec3, light.positionWS);
-      //console.log("lightsPosition[" + i.toString() + "]");
+      this._uniforms["lights[" + i.toString() + "].position"] = light.positionWS;
+      this._uniforms["lights[" + i.toString() + "].color"] = light.color;
       i+=1;
     });
+
+    /*let locations = new Float32Array(3 * this._lights.length);
+    for (let i = 0; i < this._lights.length; i++) {
+      locations[i * 3] = this._lights[i].positionWS[0]; 
+      locations[i * 3 + 1] = this._lights[i].positionWS[1];
+      locations[i * 3 + 2] = this._lights[i].positionWS[2];  
+    }
+    this._uniforms["lightsPosition[" +  this._lights.length + "]"] = locations*/
 
     // Sets the viewProjection matrix.
     // **Note**: if you want to modify the position of the geometry, you will

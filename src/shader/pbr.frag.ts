@@ -1,5 +1,6 @@
 export default `
 #define M_PI 3.1415926535897932384626433832795
+#define lightCount 4
 precision highp float;
 
 out vec4 outFragColor;
@@ -11,9 +12,15 @@ struct Material
   float metallic;
 };
 
+struct PointLight  
+{
+  vec3 position; 
+  vec3 color; 
+}; 
+
 uniform Material uMaterial;
 uniform vec3 viewPosition; 
-uniform vec3 lightsPosition[4];
+uniform PointLight lights[4];
 
 in vec3 vNormalWS;
 in vec3 fragPosition; 
@@ -33,29 +40,28 @@ float Gschilck(float dotprod, float k) {
 }
 
 vec3 pbr_color(vec3 viewDirection, vec3 lightDirection, float roughness, float metallic, vec3 albedo) {
-  
-  // -- Diffuse -- 
-  vec3 diffuse = albedo / M_PI;
-
   // -- Specular --
-  vec3 h = normalize(lightDirection + -viewDirection); 
+  vec3 h = max(normalize(lightDirection + -viewDirection), 0.0); 
   float rough2 = pow(roughness, 2.0);
   // Normal Diffusion Function
   float D = max(rough2 / (M_PI * pow(pow(max(dot(vNormalWS, h), 0.0), 2.0) * (rough2 - 1.0) + 1.0, 2.0)), 0.0); 
   // Fresnel
-  vec3 f0 = vec3(0.04);
+  vec3 f0 = vec3(0.04);//vec3(0.04);
   f0 = mix(f0, albedo, metallic);
-  vec3 F = max(f0 + (1.0 - f0) * pow(1.0 - dot(lightDirection, vNormalWS), 5.0), 0.0);
+  vec3 F = (f0 + (1.0 - f0) * pow(1.0 - max(dot(-viewDirection, h), 0.0), 5.0)) * vec3(1.0, 1.0, 1.0);
   // G
-  float dotNV = max(dot(vNormalWS, -viewDirection), 0.0);
-  float dotNL = max(dot(vNormalWS, lightDirection), 0.0);
-  float kDirect = pow(roughness + 1.0, 2.0) / 8.0;
-  float G = max(Gschilck(dotNV, kDirect) * Gschilck(dotNL, kDirect), 0.0);
+  float dotNV = max(dot(vNormalWS, h), 0.0);
+  float cosTheta = max(dot(lightDirection, h), 0.0);
+  float kDirect = roughness;
+  float G = max(Gschilck(dotNV, kDirect) * Gschilck(cosTheta, kDirect), 0.0);
 
-  vec3 specular = (D * F * G) / (4.0 * dotNV * dotNL);
-  vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+  float specular = (D * G) / (4.0 * dotNV * cosTheta);
 
-  return (kD * diffuse + specular) * dotNL;
+  // -- Diffuse -- 
+  vec3 diffuse = (1.0 - F) * albedo / M_PI;
+  float kD = (1.0 - metallic);
+
+  return G * vec3(1.0, 1.0, 1.0);//(kD * diffuse + F * specular) * cosTheta;
 }
 
 void main()
@@ -66,13 +72,16 @@ void main()
   vec3 viewDirection = normalize(fragPosition - viewPosition); 
   vec3 fragToViewDirection = normalize(viewPosition - fragPosition);
 
-  vec3 color = vec3(0, 0, 0); 
-  //for (int i = 0; i < 4; i++) {
-    vec3 lightDirection = normalize(lightsPosition[0] - fragPosition);
-    color += pbr_color(viewDirection, lightDirection, uMaterial.roughness, uMaterial.metallic, albedo);
+  vec3 radiance = vec3(0, 0, 0); 
+  //for (int i = 0; i < lightCount; i++) {
+    vec3 lightDirection = normalize(lights[0].position.xyz - fragPosition);
+    float lightIntensity = 1.0 / pow(length(lights[0].position.xyz - fragPosition), 2.0);
+    vec3 radianceLight = pbr_color(viewDirection, lightDirection, uMaterial.roughness, uMaterial.metallic, albedo);
+    //if (radianceLight[0] + radianceLight[1] + radianceLight[2] > 0.0)
+    radiance += lightIntensity * radianceLight ;
   //}
 
   // **DO NOT** forget to apply gamma correction as last step.
-  outFragColor.rgba = LinearTosRGB(vec4(color, 1.0));
+  outFragColor.rgba = LinearTosRGB(vec4(radiance, 1.0));
 }
 `;
