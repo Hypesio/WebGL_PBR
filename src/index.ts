@@ -11,6 +11,7 @@ import { setupScenePointLight, setupSceneSpheres } from './scene-setup';
 import { PBRShader } from './shader/pbr-shader';
 import { Texture, Texture2D } from './textures/texture';
 import { UniformType } from './types';
+//import diffuse_IBL from './../assets/env/Alexs_Apt_2k-diffuse-RGBM.png'
 
 interface GUIProperties {
   albedo: number[];
@@ -144,23 +145,16 @@ class Application {
     
     // Set the camera position for the shaders
     vec3.set(this._uniforms['viewPosition'] as vec3, camera.transform.position[0],  camera.transform.position[1],  camera.transform.position[2]);
-
+    
     // Set lights position
     let i = 0;
     //console.log(this._lights.length)
     this._lights.forEach(light => {
       this._uniforms["lights[" + i.toString() + "].position"] = light.positionWS;
       this._uniforms["lights[" + i.toString() + "].color"] = light.color;
+      this._uniforms["lights[" + i.toString() + "].intensity"] = light.intensity;
       i+=1;
     });
-
-    /*let locations = new Float32Array(3 * this._lights.length);
-    for (let i = 0; i < this._lights.length; i++) {
-      locations[i * 3] = this._lights[i].positionWS[0]; 
-      locations[i * 3 + 1] = this._lights[i].positionWS[1];
-      locations[i * 3 + 2] = this._lights[i].positionWS[2];  
-    }
-    this._uniforms["lightsPosition[" +  this._lights.length + "]"] = locations*/
 
     // Sets the viewProjection matrix.
     // **Note**: if you want to modify the position of the geometry, you will

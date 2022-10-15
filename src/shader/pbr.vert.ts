@@ -33,9 +33,9 @@ uniform Model uModel;
 void
 main()
 {
-  vec4 positionLocal = uModel.modelMat * vec4(in_position, 1.0);
-  gl_Position = uModel.localToProjection * positionLocal;
-  vNormalWS = in_normal;
-  fragPosition = in_position;
+  vec3 worldPos = vec3(uModel.modelMat * vec4(in_position, 1.0));
+  gl_Position = uModel.localToProjection * vec4(worldPos, 1.0);
+  vNormalWS = mat3(uModel.modelMat) * in_normal;
+  fragPosition = worldPos;
 }
 `;

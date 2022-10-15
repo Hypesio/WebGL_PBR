@@ -27,7 +27,7 @@ export class GameObject {
 
   public update() {
     this.transform.combine();
-    mat4.invert(this.worldToLocal, this.transform.matrix);
+    mat4.copy(this.worldToLocal, this.transform.matrix);
   }
 
   public draw(context: GLContext, shader: PBRShader, uniforms: Record<string, UniformType | Texture>) {
@@ -38,7 +38,7 @@ export class GameObject {
 
       vec3.copy(uniforms['uMaterial.albedo'] as vec3, this.material.albedo);
       uniforms['uMaterial.roughness'] = this.material.roughness;
-      uniforms['uMaterial.metallic'] = this.material.roughness;
+      uniforms['uMaterial.metallic'] = this.material.metallic;
 
     context.draw(this.geometry, shader, uniforms);
   }
