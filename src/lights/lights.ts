@@ -78,10 +78,12 @@ export class DirectionalLight extends PonctualLight {
 export class PointLight extends PonctualLight {
   /** Position of the point light, in World Space. */
   public positionWS: vec3;
+  public isActive: number;
 
   public constructor() {
     super();
     this.positionWS = vec3.set(vec3.create(), 0.0, 0.0, 0.0);
+    this.isActive = 1.0;
   }
 
   /**

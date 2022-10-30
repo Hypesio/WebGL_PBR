@@ -1,5 +1,7 @@
 export default `
 #define M_PI 3.1415926535897932384626433832795
+#define RECIPROCAL_PI 0.31830988618;
+#define RECIPROCAL_PI2 0.15915494;
 #define lightCount 4
 precision highp float;
 
@@ -17,6 +19,7 @@ struct PointLight
   vec3 position; 
   vec3 color; 
   float intensity;
+  bool isActive;
 }; 
 
 uniform Material uMaterial;
@@ -24,9 +27,20 @@ uniform vec3 viewPosition;
 uniform PointLight lights[lightCount];
 uniform sampler2D diffuse_IBL; 
 uniform sampler2D specular_IBL;
+uniform bool enableDiffuse;
+uniform bool enableSpecular;
+
 
 in vec3 vNormalWS;
 in vec3 fragPosition; 
+
+// 3D direction to equirectangular
+vec2 cartesianToPolar(vec3 n) {
+    vec2 uv;
+    uv.x = atan(n.z, n.x) * RECIPROCAL_PI2 + 0.5;
+    uv.y = asin(n.y) * RECIPROCAL_PI + 0.5;
+    return uv;
+}
 
 // From three.js
 vec4 sRGBToLinear( in vec4 value ) {
@@ -38,12 +52,19 @@ vec4 LinearTosRGB( in vec4 value ) {
 	return vec4( mix( pow( value.rgb, vec3( 0.41666 ) ) * 1.055 - vec3( 0.055 ), value.rgb * 12.92, vec3( lessThanEqual( value.rgb, vec3( 0.0031308 ) ) ) ), value.a );
 }
 
+float max_dot(vec3 a, vec3 b) {
+  return max(dot(a, b), 0.000001);
+}
+
 float Gschilck(float dotprod, float k) {
   return dotprod / (dotprod * (1.0 - k) + k);
 }
 
-float max_dot(vec3 a, vec3 b) {
-  return max(dot(a, b), 0.000001);
+vec3 fresnel(vec3 normal, vec3 view, vec3 albedo, float metallic) {
+  vec3 f0 = vec3(0.04);
+  f0 = mix(f0, albedo, metallic);
+  float tmp = clamp(1.0 - max_dot(normal, view), 0.0, 1.0);
+  return (f0 + (1.0 - f0) * pow(tmp, 5.0));
 }
 
 vec3 pbr_color(vec3 viewDirection, vec3 lightDirection, float roughness, float metallic, vec3 albedo, vec3 normal) {
@@ -53,26 +74,23 @@ vec3 pbr_color(vec3 viewDirection, vec3 lightDirection, float roughness, float m
   
   // Normal Diffusion Function
   float D = rough2 / (M_PI * pow(pow(max_dot(normal, h), 2.0) * (rough2 - 1.0) + 1.0, 2.0)); 
-  
   // Fresnel
-  vec3 f0 = vec3(0.04);//vec3(0.04);
-  f0 = mix(f0, albedo, metallic);
-  vec3 F = (f0 + (1.0 - f0) * pow(1.0 - min(max_dot(h, -viewDirection), 1.0), 5.0)) * vec3(1.0, 1.0, 1.0);
-  
+  vec3 F = fresnel(h, -viewDirection, albedo, metallic);
   // G
   float dotNV = max_dot(normal, -viewDirection);
   float dotNL = max_dot(normal, lightDirection);
   float kDirect = pow(roughness + 1.0, 2.0) / 8.0;
   float G = Gschilck(dotNV, kDirect) * Gschilck(dotNL, kDirect);
 
-
-  float specular = (D * G) / (4.0 * dotNV * dotNL);
+  vec3 specular = (D * G * F) / (4.0 * dotNV * dotNL);
+  specular *= float(enableSpecular);
 
   // -- Diffuse -- 
   vec3 diffuse = albedo / M_PI;
   vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+  diffuse *= kD * float(enableDiffuse);
 
-  return (kD * diffuse + F * specular) * dotNL;
+  return (diffuse + specular) * dotNL;
 }
 
 void main()
@@ -85,16 +103,25 @@ void main()
   vec3 viewDirection = normalize(fragPosition - viewPosition); 
 
   vec3 radiance = vec3(0, 0, 0); 
-  //int i = 3;
+
   for (int i = 0; i < lightCount; i++) {
     vec3 lightDirection = normalize(lights[i].position.xyz - fragPosition);
     float distanceLight = length(lights[i].position.xyz - fragPosition);
     float lightIntensity = lights[i].intensity / pow(distanceLight, 2.0);
-    vec3 lightColor = lightIntensity * lights[i].color;
+    vec3 lightColor = lightIntensity * lights[i].color * float(lights[i].isActive);
 
-    vec3 color = pbr_color(viewDirection, lightDirection, max(uMaterial.roughness, 0.0), uMaterial.metallic, albedo, normal);
+    vec3 color = pbr_color(viewDirection, lightDirection, uMaterial.roughness, uMaterial.metallic, albedo, normal);
     radiance += color * lightColor;
   }
+
+  // IBL Diffuse
+  vec3 irradiance = texture(diffuse_IBL, cartesianToPolar(normal)).rgb;
+  vec3 diffuse = irradiance * albedo;
+  vec3 F = fresnel(normal, -viewDirection, albedo, uMaterial.metallic);
+  vec3 kD = (vec3(1.0) - F) * (1.0 - uMaterial.metallic);
+  vec3 ambient = kD * diffuse;
+
+  //radiance += ambient; 
 
   // **DO NOT** forget to apply gamma correction as last step.
   outFragColor.rgba = LinearTosRGB(vec4(radiance, 1.0));
