@@ -27,9 +27,11 @@ uniform vec3 viewPosition;
 uniform PointLight lights[lightCount];
 uniform sampler2D diffuse_IBL; 
 uniform sampler2D specular_IBL;
+uniform sampler2D BRDFIntegrationMap;
 uniform bool enableDiffuse;
 uniform bool enableSpecular;
-
+uniform bool enableIBLDiffuse;
+uniform bool enableIBLSpecular;
 
 in vec3 vNormalWS;
 in vec3 fragPosition; 
@@ -37,8 +39,8 @@ in vec3 fragPosition;
 // 3D direction to equirectangular
 vec2 cartesianToPolar(vec3 n) {
     vec2 uv;
-    uv.x = atan(n.z, n.x) * RECIPROCAL_PI2 + 0.5;
-    uv.y = asin(n.y) * RECIPROCAL_PI + 0.5;
+    uv.x = atan(n.x) / M_PI + 0.5;
+    uv.y = asin(n.y) / M_PI + 0.5;
     return uv;
 }
 
@@ -58,6 +60,10 @@ float max_dot(vec3 a, vec3 b) {
 
 float Gschilck(float dotprod, float k) {
   return dotprod / (dotprod * (1.0 - k) + k);
+}
+
+vec3 RGBMDecode(vec4 rgbm) {
+  return 6.0 * rgbm.rgb * rgbm.a;
 }
 
 vec3 fresnel(vec3 normal, vec3 view, vec3 albedo, float metallic) {
@@ -96,7 +102,7 @@ vec3 pbr_color(vec3 viewDirection, vec3 lightDirection, float roughness, float m
 void main()
 {
   vec3 normal = normalize(vNormalWS); 
-
+  
   // **DO NOT** forget to do all your computation in linear space.
   vec3 albedo = sRGBToLinear(vec4(uMaterial.albedo, 1.0)).rgb;
 
@@ -115,14 +121,27 @@ void main()
   }
 
   // IBL Diffuse
-  vec3 irradiance = texture(diffuse_IBL, cartesianToPolar(normal)).rgb;
-  vec3 diffuse = irradiance * albedo;
+  vec3 irradiance = RGBMDecode(texture(diffuse_IBL, cartesianToPolar(normal)));
+  vec3 diffuseIBL = irradiance * albedo;
   vec3 F = fresnel(normal, -viewDirection, albedo, uMaterial.metallic);
   vec3 kD = (vec3(1.0) - F) * (1.0 - uMaterial.metallic);
-  vec3 ambient = kD * diffuse;
 
-  //radiance += ambient; 
-
+  // IBL Specular
+  vec2 uvPolar = cartesianToPolar(reflect(viewDirection, normal));
+  float l = 1.0;
+  float maxLod = 5.0; 
+  l = float(ceil(uMaterial.roughness * maxLod));
+  uvPolar.x = uvPolar.x / pow(2.0, l); 
+  uvPolar.y = uvPolar.y / pow(2.0, l + 1.0) + 1.0 - 1.0 / pow(2.0, l);
+  vec3 envColor = RGBMDecode(texture(specular_IBL, uvPolar));
+  vec2 envBRDF = texture(BRDFIntegrationMap, vec2(max_dot(normal, viewDirection), uMaterial.roughness)).xy;//;
+  vec3 specularIBL = envColor;
+  specularIBL = envColor * (F * envBRDF.x + envBRDF.y);
+  
+  vec3 ambient = (kD * diffuseIBL * float(enableIBLDiffuse) + specularIBL * float(enableIBLSpecular)) ;
+  radiance += ambient; 
+  //outFragColor.rgba = vec4(normal.rgb, 1.0);
+  //radiance = irradiance;
   // **DO NOT** forget to apply gamma correction as last step.
   outFragColor.rgba = LinearTosRGB(vec4(radiance, 1.0));
 }

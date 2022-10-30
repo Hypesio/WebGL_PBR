@@ -19,6 +19,8 @@ interface GUIProperties {
   enableSpecular: boolean;
   enableDiffuse: boolean;
   resetCam: boolean;
+  IBLDiffuse: boolean;
+  IBLSpecular: boolean;
 }
 
 /**
@@ -33,13 +35,15 @@ class Application {
    * @private
    */
   private _context: GLContext;
-  private _geometries: Geometry[]; 
+  private _geometries: Geometry[];
   private _shader: PBRShader;
   private _gameObjects: GameObject[];
   private _lights: PointLight[];
   private _uniforms: Record<string, UniformType | Texture>;
 
   private _texture_diffuseIBL: Texture2D<HTMLElement> | null;
+  private _texture_specularIBL: Texture2D<HTMLElement> | null;
+  private _texture_BRDFIntegrationMap: Texture2D<HTMLElement> | null;
 
   private _camera: Camera;
 
@@ -63,7 +67,9 @@ class Application {
       'uModel.modelMat': mat4.create(),
       'viewPosition': vec3.create(),
       'enableSpecular': true,
-      'enableDiffuse': true
+      'enableDiffuse': true,
+      'enableIBLDiffuse': true,
+      'enableIBLSpecular': true,
     };
 
     // Init geometries
@@ -74,18 +80,20 @@ class Application {
     this._gameObjects = setupSceneSpheres(this._geometries[0]);
 
     // Init point lights
-    this._lights = setupScenePointLight(); 
+    this._lights = setupScenePointLight();
     let i = 0;
     this._lights.forEach(light => {
       this._uniforms["lights[" + i.toString() + "].position"] = vec3.create();
       this._uniforms["lights[" + i.toString() + "].color"] = vec3.create();
       this._uniforms["lights[" + i.toString() + "].intensity"] = 20.0;
       this._uniforms["lights[" + i.toString() + "].isActive"] = 1.0;
-      i+=1;
+      i += 1;
     });
 
     this._shader = new PBRShader();
     this._texture_diffuseIBL = null;
+    this._texture_specularIBL = null;
+    this._texture_BRDFIntegrationMap = null;
 
     this._guiProperties = {
       albedo: [255, 255, 255],
@@ -93,6 +101,8 @@ class Application {
       enableSpecular: true,
       enableDiffuse: true,
       resetCam: false,
+      IBLDiffuse: true,
+      IBLSpecular: true,
     };
 
     this._createGUI();
@@ -105,10 +115,10 @@ class Application {
     this._geometries.forEach(geometry => {
       this._context.uploadGeometry(geometry);
     });
-    
+
     this._context.compileProgram(this._shader);
 
-    // Example showing how to load a texture and upload it to GPU.
+    // Load diffuse IBL.
     this._texture_diffuseIBL = await Texture2D.load(
       'assets/env/Alexs_Apt_2k-diffuse-RGBM.png'
     );
@@ -117,7 +127,27 @@ class Application {
       // You can then use it directly as a uniform:
       this._uniforms['diffuse_IBL'] = this._texture_diffuseIBL;
     }
+
+    // Load specular IBL
+    this._texture_specularIBL = await Texture2D.load(
+      'assets/env/Alexs_Apt_2k-specular-RGBM.png'
+    );
+    if (this._texture_specularIBL !== null) {
+      this._context.uploadTexture(this._texture_specularIBL);
+      // You can then use it directly as a uniform:
+      this._uniforms['specular_IBL'] = this._texture_specularIBL;
+    }
+
+    // Load BRDF Integration Map 
+    this._texture_BRDFIntegrationMap = await Texture2D.load(
+      'assets/env/Alexs_Apt_2k-specular-RGBM.png');
+    if (this._texture_BRDFIntegrationMap !== null) {
+      this._context.uploadTexture(this._texture_BRDFIntegrationMap);
+      // You can then use it directly as a uniform:
+      this._uniforms['specular_IBL'] = this._texture_BRDFIntegrationMap;
+    }
   }
+
 
   /**
    * Called at every loop, before the [[Application.render]] method.
@@ -165,16 +195,18 @@ class Application {
     // Set booleans
     this._uniforms['enableSpecular'] = props.enableSpecular;
     this._uniforms['enableDiffuse'] = props.enableDiffuse;
+    this._uniforms['enableIBLSpecular'] = props.IBLSpecular;
+    this._uniforms['enableIBLDiffuse'] = props.IBLDiffuse;
 
     // Set the color from the GUI into the materials
     this._gameObjects.forEach(go => {
-      go.material.albedo = vec3.set(vec3.create(), props.albedo[0] / 255,props.albedo[1] / 255, props.albedo[2] / 255);
+      go.material.albedo = vec3.set(vec3.create(), props.albedo[0] / 255, props.albedo[1] / 255, props.albedo[2] / 255);
     });
 
-    
+
     // Set the camera position for the shaders
-    vec3.set(this._uniforms['viewPosition'] as vec3, camera.transform.position[0],  camera.transform.position[1],  camera.transform.position[2]);
-    
+    vec3.set(this._uniforms['viewPosition'] as vec3, camera.transform.position[0], camera.transform.position[1], camera.transform.position[2]);
+
     // Set lights datas
     let i = 0;
     this._lights.forEach(light => {
@@ -182,7 +214,7 @@ class Application {
       vec3.copy(this._uniforms["lights[" + i.toString() + "].color"] as vec3, light.color);
       this._uniforms["lights[" + i.toString() + "].intensity"] = light.intensity;
       this._uniforms["lights[" + i.toString() + "].isActive"] = props.lightsActive > i;
-      i+=1;
+      i += 1;
     });
 
     // Sets the viewProjection matrix.
@@ -203,7 +235,7 @@ class Application {
       this._uniforms['uModel.modelMat'] as mat4,
       mat4.create()
     );
-    
+
   }
 
   /**
@@ -224,6 +256,8 @@ class Application {
     gui.add(this._guiProperties, 'enableSpecular');
     gui.add(this._guiProperties, 'enableDiffuse');
     gui.add(this._guiProperties, 'resetCam');
+    gui.add(this._guiProperties, 'IBLDiffuse');
+    gui.add(this._guiProperties, 'IBLSpecular');
     return gui;
   }
 }

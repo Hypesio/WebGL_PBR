@@ -23,12 +23,15 @@ export function setupSceneSpheres(geometry: Geometry): GameObject[] {
         for(let j = 0; j < width; j++) {
             position[0] = startPosition[0] + distanceSphere * j;
             let metallic = increaseParam * i + 0.01;
+   
             let roughness = increaseParam * j + 0.01;
+            //console.log( i + "/" + j + " | Rough " + roughness + " metal" + metallic);
             let material = new Material(metallic, vec3.set(vec3.create(),0.7, 0.7, 0.7), roughness);
             let go = new GameObject(geometry, material);
             vec3.copy(go.transform.position, position);
             spheres.push(go);
         }
+        //console.log("Line");
     }
 
     return spheres;
