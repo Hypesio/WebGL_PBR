@@ -1,8 +1,8 @@
 export default `
 #define M_PI 3.1415926535897932384626433832795
-#define RECIPROCAL_PI 0.31830988618;
-#define RECIPROCAL_PI2 0.15915494;
 #define lightCount 4
+#define RECIPROCAL_PI 0.31830988618
+#define RECIPROCAL_PI2 0.15915494
 precision highp float;
 
 out vec4 outFragColor;
@@ -12,6 +12,9 @@ struct Material
   vec3 albedo;
   float roughness;
   float metallic;
+  sampler2D color_tex; 
+  sampler2D rough_tex;
+  sampler2D normal_tex;
 };
 
 struct PointLight  
@@ -36,11 +39,10 @@ uniform bool enableIBLSpecular;
 in vec3 vNormalWS;
 in vec3 fragPosition; 
 
-// 3D direction to equirectangular
 vec2 cartesianToPolar(vec3 n) {
     vec2 uv;
-    uv.x = atan(n.x) / M_PI + 0.5;
-    uv.y = asin(n.y) / M_PI + 0.5;
+    uv.x = atan(n.z, n.x) * RECIPROCAL_PI2 + 0.5;
+    uv.y = asin(n.y) * RECIPROCAL_PI + 0.5;
     return uv;
 }
 
