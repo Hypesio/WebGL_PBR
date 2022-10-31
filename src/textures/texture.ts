@@ -1,3 +1,4 @@
+import { GLContext } from '../gl';
 import { PixelArray } from '../types';
 
 /**

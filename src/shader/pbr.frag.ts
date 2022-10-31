@@ -12,9 +12,9 @@ struct Material
   vec3 albedo;
   float roughness;
   float metallic;
-  sampler2D color_tex; 
-  sampler2D rough_tex;
-  sampler2D normal_tex;
+  sampler2D texAlbedo; 
+  sampler2D texRoughness;
+  sampler2D texNormal;
 };
 
 struct PointLight  
@@ -46,6 +46,13 @@ vec2 cartesianToPolar(vec3 n) {
     return uv;
 }
 
+vec2 sphereCoordinate(vec3 n) {
+  vec2 uv;
+  uv.x = atan(n.x) / M_PI + 0.5;
+  uv.y = asin(n.y) / M_PI + 0.5;
+  return uv;
+}
+
 // From three.js
 vec4 sRGBToLinear( in vec4 value ) {
 	return vec4( mix( pow( value.rgb * 0.9478672986 + vec3( 0.0521327014 ), vec3( 2.4 ) ), value.rgb * 0.0773993808, vec3( lessThanEqual( value.rgb, vec3( 0.04045 ) ) ) ), value.a );
@@ -73,6 +80,13 @@ vec3 fresnel(vec3 normal, vec3 view, vec3 albedo, float metallic) {
   f0 = mix(f0, albedo, metallic);
   float tmp = clamp(1.0 - max_dot(normal, view), 0.0, 1.0);
   return (f0 + (1.0 - f0) * pow(tmp, 5.0));
+}
+
+vec3 specularIBLColor(vec3 viewDirection,vec3 normal, sampler2D specular_IBL, float l) {
+  vec2 uvPolar = cartesianToPolar(reflect(viewDirection, normal));
+  uvPolar.x = uvPolar.x / pow(2.0, l); 
+  uvPolar.y = uvPolar.y / pow(2.0, l + 1.0) + 1.0 - 1.0 / pow(2.0, l);
+  return RGBMDecode(texture(specular_IBL, uvPolar));
 }
 
 vec3 pbr_color(vec3 viewDirection, vec3 lightDirection, float roughness, float metallic, vec3 albedo, vec3 normal) {
@@ -104,9 +118,18 @@ vec3 pbr_color(vec3 viewDirection, vec3 lightDirection, float roughness, float m
 void main()
 {
   vec3 normal = normalize(vNormalWS); 
-  
+  float roughness = uMaterial.roughness;
+  float metallic = uMaterial.metallic;
+  vec3 albedo = uMaterial.albedo;
+
+  /*vec2 uv = sphereCoordinate(normal); 
+  normal = texture(uMaterial.texNormal, uv).rgb;
+  //normal = normalize(normal * 2.0 - 1.0);
+  albedo = texture(uMaterial.texAlbedo, uv).rgb;
+  roughness = texture(uMaterial.texRoughness, uv).x;*/
+
   // **DO NOT** forget to do all your computation in linear space.
-  vec3 albedo = sRGBToLinear(vec4(uMaterial.albedo, 1.0)).rgb;
+  albedo = sRGBToLinear(vec4(albedo, 1.0)).rgb;
 
   vec3 viewDirection = normalize(fragPosition - viewPosition); 
 
@@ -118,25 +141,26 @@ void main()
     float lightIntensity = lights[i].intensity / pow(distanceLight, 2.0);
     vec3 lightColor = lightIntensity * lights[i].color * float(lights[i].isActive);
 
-    vec3 color = pbr_color(viewDirection, lightDirection, uMaterial.roughness, uMaterial.metallic, albedo, normal);
+    vec3 color = pbr_color(viewDirection, lightDirection, roughness, metallic, albedo, normal);
     radiance += color * lightColor;
   }
 
   // IBL Diffuse
   vec3 irradiance = RGBMDecode(texture(diffuse_IBL, cartesianToPolar(normal)));
   vec3 diffuseIBL = irradiance * albedo;
-  vec3 F = fresnel(normal, -viewDirection, albedo, uMaterial.metallic);
-  vec3 kD = (vec3(1.0) - F) * (1.0 - uMaterial.metallic);
+  vec3 F = fresnel(normal, -viewDirection, albedo, metallic);
+  vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
 
   // IBL Specular
-  vec2 uvPolar = cartesianToPolar(reflect(viewDirection, normal));
   float l = 1.0;
   float maxLod = 5.0; 
-  l = float(ceil(uMaterial.roughness * maxLod));
-  uvPolar.x = uvPolar.x / pow(2.0, l); 
-  uvPolar.y = uvPolar.y / pow(2.0, l + 1.0) + 1.0 - 1.0 / pow(2.0, l);
-  vec3 envColor = RGBMDecode(texture(specular_IBL, uvPolar));
-  vec2 envBRDF = texture(BRDFIntegrationMap, vec2(max_dot(normal, viewDirection), uMaterial.roughness)).xy;//;
+  float l_min = min(float(floor(roughness * maxLod)), maxLod - 1.0);
+  float range = 1.0 / (maxLod - 1.0);
+  float blendForce = (roughness - l_min * range) / range;
+  vec3 minEnvColor = specularIBLColor(viewDirection, normal, specular_IBL, l_min); 
+  vec3 maxEnvColor = specularIBLColor(viewDirection, normal, specular_IBL, l_min + 1.0);
+  vec3 envColor = mix(minEnvColor, maxEnvColor, blendForce);
+  vec2 envBRDF = texture(BRDFIntegrationMap, vec2(max_dot(normal, viewDirection), roughness)).xy;//;
   vec3 specularIBL = envColor;
   specularIBL = envColor * (F * envBRDF.x + envBRDF.y);
   

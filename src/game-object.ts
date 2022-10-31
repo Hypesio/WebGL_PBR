@@ -39,6 +39,12 @@ export class GameObject {
       vec3.copy(uniforms['uMaterial.albedo'] as vec3, this.material.albedo);
       uniforms['uMaterial.roughness'] = this.material.roughness;
       uniforms['uMaterial.metallic'] = this.material.metallic;
+      if (this.material.texAlbedo != null)
+        uniforms['uMaterial.texAlbedo'] = this.material.texAlbedo;
+      if (this.material.texRoughness != null)
+        uniforms['uMaterial.texRoughness'] = this.material.texRoughness;
+      if (this.material.texNormal != null)
+        uniforms['uMaterial.texNormal'] = this.material.texNormal;
 
     context.draw(this.geometry, shader, uniforms);
   }

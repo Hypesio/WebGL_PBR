@@ -7,7 +7,7 @@ import { SphereGeometry } from './geometries/sphere';
 import { TriangleGeometry } from './geometries/triangle';
 import { GLContext } from './gl';
 import { PointLight } from './lights/lights';
-import { setupScenePointLight, setupSceneSpheres } from './scene-setup';
+import { setupScenePointLight, setupSceneSpheres, setupScene2Spheres } from './scene-setup';
 import { PBRShader } from './shader/pbr-shader';
 import { Texture, Texture2D } from './textures/texture';
 import { UniformType } from './types';
@@ -74,10 +74,13 @@ class Application {
 
     // Init geometries
     this._geometries = [];
-    this._geometries.push(new SphereGeometry(0.5, 20, 20));
+    this._geometries.push(new SphereGeometry(0.5, 40, 40));
 
     // Init objects
+    this._gameObjects = [];
     this._gameObjects = setupSceneSpheres(this._geometries[0]);
+    //setupScene2Spheres(this._geometries[0], this._context).
+      //then((value) => this._gameObjects = value);
 
     // Init point lights
     this._lights = setupScenePointLight();
@@ -118,7 +121,7 @@ class Application {
 
     this._context.compileProgram(this._shader);
 
-    // Load diffuse IBL.
+    // Load diffuse IBL
     this._texture_diffuseIBL = await Texture2D.load(
       'assets/env/Alexs_Apt_2k-diffuse-RGBM.png'
     );
