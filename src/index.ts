@@ -4,7 +4,6 @@ import { Camera } from './camera';
 import { GameObject } from './game-object';
 import { Geometry } from './geometries/geometry';
 import { SphereGeometry } from './geometries/sphere';
-import { TriangleGeometry } from './geometries/triangle';
 import { GLContext } from './gl';
 import { PointLight } from './lights/lights';
 import { setupScenePointLight, setupSceneSpheres, setupScene2Spheres } from './scene-setup';
@@ -14,6 +13,7 @@ import { UniformType } from './types';
 import { updateInputs } from './input';
 
 interface GUIProperties {
+  scene: number;
   albedo: number[];
   lightsActive: number;
   enableSpecular: boolean;
@@ -37,9 +37,12 @@ class Application {
   private _context: GLContext;
   private _geometries: Geometry[];
   private _shader: PBRShader;
-  private _gameObjects: GameObject[];
+  private _scenesObjects: GameObject[][];
+  private _actualScene: number;
   private _lights: PointLight[];
   private _uniforms: Record<string, UniformType | Texture>;
+
+  private _gui: GUI;
 
   private _texture_diffuseIBL: Texture2D<HTMLElement> | null;
   private _texture_specularIBL: Texture2D<HTMLElement> | null;
@@ -72,15 +75,17 @@ class Application {
       'enableIBLSpecular': true,
     };
 
+    this._actualScene = 0;
+
     // Init geometries
     this._geometries = [];
     this._geometries.push(new SphereGeometry(0.5, 40, 40));
 
     // Init objects
-    this._gameObjects = [];
-    this._gameObjects = setupSceneSpheres(this._geometries[0]);
-    //setupScene2Spheres(this._geometries[0], this._context).
-      //then((value) => this._gameObjects = value);
+    this._scenesObjects = [];
+    this._scenesObjects.push(setupSceneSpheres(this._geometries[0]));
+    setupScene2Spheres(this._geometries[0], this._context).
+      then((value) => this._scenesObjects.push(value));
 
     // Init point lights
     this._lights = setupScenePointLight();
@@ -99,6 +104,7 @@ class Application {
     this._texture_BRDFIntegrationMap = null;
 
     this._guiProperties = {
+      scene: this._actualScene,
       albedo: [255, 255, 255],
       lightsActive: 4,
       enableSpecular: true,
@@ -108,7 +114,7 @@ class Application {
       IBLSpecular: true,
     };
 
-    this._createGUI();
+    this._gui = this._createGUI();
   }
 
   /**
@@ -156,15 +162,25 @@ class Application {
    * Called at every loop, before the [[Application.render]] method.
    */
   update() {
+
+    if (this._actualScene != this._guiProperties.scene) {
+      if (this._guiProperties.scene > this._scenesObjects.length)
+        this._guiProperties.scene = this._scenesObjects.length - 1;
+      this._actualScene = this._guiProperties.scene;
+      this._guiProperties.resetCam = true;
+      this._gui.__controllers[0].setValue(this._actualScene);
+    }
+
     if (this._guiProperties.resetCam) {
       this._guiProperties.resetCam = false;
+      this._gui.__controllers[5].setValue(false);
       this._camera.transform.rotation = quat.create();
       this._camera.transform.position = vec3.set(vec3.create(), 0, 0, 2);
     }
 
     updateInputs(canvas, this._camera);
 
-    this._gameObjects.forEach(go => {
+    this._scenesObjects[this._actualScene].forEach(go => {
       go.update();
     });
 
@@ -202,7 +218,7 @@ class Application {
     this._uniforms['enableIBLDiffuse'] = props.IBLDiffuse;
 
     // Set the color from the GUI into the materials
-    this._gameObjects.forEach(go => {
+    this._scenesObjects[this._actualScene].forEach(go => {
       go.material.albedo = vec3.set(vec3.create(), props.albedo[0] / 255, props.albedo[1] / 255, props.albedo[2] / 255);
     });
 
@@ -229,7 +245,7 @@ class Application {
     );
 
     // Draws all gameobjects
-    this._gameObjects.forEach(go => {
+    this._scenesObjects[this._actualScene].forEach(go => {
       go.draw(this._context, this._shader, this._uniforms);
     });
 
@@ -254,6 +270,7 @@ class Application {
    */
   private _createGUI(): GUI {
     const gui = new GUI();
+    gui.add(this._guiProperties, 'scene');
     gui.addColor(this._guiProperties, 'albedo');
     gui.add(this._guiProperties, 'lightsActive');
     gui.add(this._guiProperties, 'enableSpecular');

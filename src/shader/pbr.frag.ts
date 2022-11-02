@@ -12,6 +12,7 @@ struct Material
   vec3 albedo;
   float roughness;
   float metallic;
+  bool useTextures;
   sampler2D texAlbedo; 
   sampler2D texRoughness;
   sampler2D texNormal;
@@ -122,11 +123,13 @@ void main()
   float metallic = uMaterial.metallic;
   vec3 albedo = uMaterial.albedo;
 
-  /*vec2 uv = sphereCoordinate(normal); 
-  normal = texture(uMaterial.texNormal, uv).rgb;
-  //normal = normalize(normal * 2.0 - 1.0);
-  albedo = texture(uMaterial.texAlbedo, uv).rgb;
-  roughness = texture(uMaterial.texRoughness, uv).x;*/
+  if (uMaterial.useTextures) {
+    vec2 uv = sphereCoordinate(normal); 
+    //normal = texture(uMaterial.texNormal, uv).rgb;
+    //normal = normalize(normal * 2.0 - 1.0);
+    albedo = texture(uMaterial.texAlbedo, uv).rgb;
+    roughness = texture(uMaterial.texRoughness, uv).x;
+  }
 
   // **DO NOT** forget to do all your computation in linear space.
   albedo = sRGBToLinear(vec4(albedo, 1.0)).rgb;

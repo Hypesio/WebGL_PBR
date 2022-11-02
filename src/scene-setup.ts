@@ -39,38 +39,46 @@ export function setupSceneSpheres(geometry: Geometry): GameObject[] {
     return spheres;
 }
 
-export async function setupScene2Spheres(geometry: Geometry, context: GLContext): Promise<GameObject[]> {
-    let width = 2; 
-    let height = 2; 
-    let lenBorder = 3; 
-    let distanceSphere = lenBorder / (width - 1); 
-    let startPosition = vec3.set(vec3.create(), -lenBorder/2, -lenBorder/2, -7);
-    let position = vec3.set(vec3.create(), 0, 0, -7);
-
-    let spheres: GameObject[] = []; 
-    let texColor = await Texture2D.load('assets/paper/Paper005_1K_Color.jpg');
+async function initObject(geometry: Geometry, context: GLContext, texturePath: string, position: vec3, size: number): Promise<GameObject> {
+    let texColor = await Texture2D.load(texturePath + 'Color.jpg');
     if (texColor !== null) {
         context.uploadTexture(texColor);
     }
-    let texNormal = await Texture2D.load('assets/paper/Paper005_1K_NormalGL.jpg');
+    let texNormal = await Texture2D.load(texturePath + 'NormalGL.jpg');
     if (texNormal !== null) {
         context.uploadTexture(texNormal);
     }
-    let texRoughness = await Texture2D.load('assets/paper/Paper005_1K_Roughness.jpg');
+    let texRoughness = await Texture2D.load(texturePath + 'Roughness.jpg');
     if (texRoughness !== null) {
         context.uploadTexture(texRoughness);
     }
     let material = new Material(0.0, vec3.set(vec3.create(),0.7, 0.7, 0.7), 0.0);
     material.setTextures(texColor, texNormal, texRoughness);
     let go = new GameObject(geometry, material);
-    go.transform.scale = vec3.set(vec3.create(), 4.0, 4.0, 4.0);
+    go.transform.scale = vec3.set(vec3.create(), size, size, size);
     vec3.copy(go.transform.position, position);
-    spheres.push(go);
+    return go;
+}
 
+export async function setupScene2Spheres(geometry: Geometry, context: GLContext): Promise<GameObject[]> {
+    let position = vec3.set(vec3.create(), 1.5, 1.5, -7);
 
+    let spheres: GameObject[] = []; 
 
-    //position[1] = startPosition[1] + distanceSphere * i;
-    //position[0] = startPosition[0] + distanceSphere * j;
+    await initObject(geometry, context, "assets/paper/Paper005_1K_", position, 2.0)
+        .then((value) => spheres.push(value));
+
+    position = vec3.fromValues(-1.5, -1.5, -7);
+    await initObject(geometry, context, "assets/facade/Facade018A_1K_", position, 2.0)
+        .then((value) => spheres.push(value));
+
+    position = vec3.fromValues(1.5, -1.5, -7);
+    await initObject(geometry, context, "assets/leather/Leather034C_1K_", position, 2.0)
+        .then((value) => spheres.push(value));
+
+    position = vec3.fromValues(-1.5, 1.5, -7);
+    await initObject(geometry, context, "assets/bricks/Bricks075B_1K_", position, 2.0)
+            .then((value) => spheres.push(value));
 
     return spheres;
 }

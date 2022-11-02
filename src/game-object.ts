@@ -46,6 +46,8 @@ export class GameObject {
       if (this.material.texNormal != null)
         uniforms['uMaterial.texNormal'] = this.material.texNormal;
 
+      uniforms['uMaterial.useTextures'] = this.material.texAlbedo != null;
+
     context.draw(this.geometry, shader, uniforms);
   }
 }
