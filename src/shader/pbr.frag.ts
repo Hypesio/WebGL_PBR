@@ -153,12 +153,11 @@ void main()
   float l = 1.0;
   float maxLod = 5.0; 
   float l_min = min(float(floor(roughness * maxLod)), maxLod - 1.0);
-  float range = 1.0 / (maxLod - 1.0);
-  float blendForce = (roughness - l_min * range) / range;
+  float blendForce = maxLod * roughness - l_min;
   vec3 minEnvColor = specularIBLColor(viewDirection, normal, specular_IBL, l_min); 
   vec3 maxEnvColor = specularIBLColor(viewDirection, normal, specular_IBL, l_min + 1.0);
   vec3 envColor = mix(minEnvColor, maxEnvColor, blendForce);
-  vec2 envBRDF = texture(BRDFIntegrationMap, vec2(max_dot(normal, viewDirection), roughness)).xy;//;
+  vec2 envBRDF = texture(BRDFIntegrationMap, vec2(clamp(dot(normal, viewDirection), 0.001, 1.0), roughness)).xy;
   vec3 specularIBL = envColor;
   specularIBL = envColor * (F * envBRDF.x + envBRDF.y);
   

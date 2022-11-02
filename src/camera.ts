@@ -1,4 +1,4 @@
-import { mat4 } from 'gl-matrix';
+import { mat4, vec3 } from 'gl-matrix';
 import { Transform } from './transform';
 
 /**
@@ -10,12 +10,14 @@ export class Camera {
   public worldToLocal: mat4;
   public projection: mat4;
   public localToProjection: mat4;
+  public viewMatrix: mat4;
 
   public constructor() {
     this.transform = new Transform();
     this.worldToLocal = mat4.create();
     this.projection = mat4.create();
     this.localToProjection = mat4.create();
+    this.viewMatrix = mat4.create();
   }
 
   public setParameters(aspect: number, near = 0.1, far = 100.0): this {
@@ -27,5 +29,7 @@ export class Camera {
     this.transform.combine();
     mat4.invert(this.worldToLocal, this.transform.matrix);
     mat4.multiply(this.localToProjection, this.projection, this.worldToLocal);
+    // /!\ Center position shouldn't be hardcoded 
+    mat4.lookAt(this.viewMatrix, this.transform.position, vec3.fromValues(0, 0, -7), vec3.fromValues(0, 1, 0));
   }
 }

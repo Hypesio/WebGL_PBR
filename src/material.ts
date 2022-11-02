@@ -12,7 +12,7 @@ export class Material {
     public texNormal : Texture2D<HTMLElement> | null;
     public texRoughness : Texture2D<HTMLElement> | null;
 
-    public constructor(metallic: number, albedo: vec3, roughness: number){
+    public constructor(metallic: number = 0.0, albedo: vec3 = [0.0, 0.0, 0.0], roughness: number = 0.0){
         this.metallic = metallic; 
         this.roughness = roughness; 
         this.albedo = albedo;

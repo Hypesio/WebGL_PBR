@@ -11,6 +11,8 @@ import { PBRShader } from './shader/pbr-shader';
 import { Texture, Texture2D } from './textures/texture';
 import { UniformType } from './types';
 import { updateInputs } from './input';
+import { CubemapShader } from './shader/cubemap-shader';
+import { CubeGeometry } from './geometries/cube';
 
 interface GUIProperties {
   scene: number;
@@ -37,10 +39,13 @@ class Application {
   private _context: GLContext;
   private _geometries: Geometry[];
   private _shader: PBRShader;
+  private _cubemapShader: CubemapShader;
   private _scenesObjects: GameObject[][];
   private _actualScene: number;
   private _lights: PointLight[];
   private _uniforms: Record<string, UniformType | Texture>;
+  private _uniformsCubemap: Record<string, UniformType | Texture>;
+  private _cubemapCube: GameObject;
 
   private _gui: GUI;
 
@@ -103,6 +108,18 @@ class Application {
     this._texture_specularIBL = null;
     this._texture_BRDFIntegrationMap = null;
 
+    // Cubemap gestion
+    this._cubemapShader = new CubemapShader();
+    let cubeGeo = new CubeGeometry();
+    this._geometries.push(cubeGeo);
+    this._cubemapCube = new GameObject(cubeGeo, null);
+
+    this._uniformsCubemap = {
+      'uModel.localToProjection': mat4.create(),
+      'viewMatrix': mat4.create(),
+      'viewPosition': vec3.create(),
+    };
+
     this._guiProperties = {
       scene: this._actualScene,
       albedo: [255, 255, 255],
@@ -126,6 +143,7 @@ class Application {
     });
 
     this._context.compileProgram(this._shader);
+    this._context.compileProgram(this._cubemapShader);
 
     // Load diffuse IBL
     this._texture_diffuseIBL = await Texture2D.load(
@@ -254,6 +272,18 @@ class Application {
       this._uniforms['uModel.modelMat'] as mat4,
       mat4.create()
     );
+
+    // Draw Cubemap
+    vec3.set(this._uniformsCubemap['viewPosition'] as vec3, camera.transform.position[0], camera.transform.position[1], camera.transform.position[2]);
+    mat4.copy(
+      this._uniformsCubemap['uModel.localToProjection'] as mat4,
+      camera.localToProjection
+    );
+    mat4.copy(
+      this._uniformsCubemap['viewMatrix'] as mat4,
+      camera.viewMatrix
+    );
+    //this._context.draw(this._cubemapCube.geometry, this._cubemapShader, this._uniformsCubemap);
 
   }
 

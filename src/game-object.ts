@@ -17,11 +17,12 @@ export class GameObject {
   public worldToLocal: mat4;
   public material: Material;
 
-  public constructor(geometry: Geometry, material: Material) {
+  public constructor(geometry: Geometry, material: Material | null) {
     this.transform = new Transform();
     this.worldToLocal = mat4.create();
     this.geometry = geometry;
-    this.material = material;
+    
+    this.material = material ? material : new Material();
   }
 
 
@@ -32,21 +33,22 @@ export class GameObject {
 
   public draw(context: GLContext, shader: PBRShader, uniforms: Record<string, UniformType | Texture>) {
     mat4.copy(
-        uniforms['uModel.modelMat'] as mat4,
-        this.worldToLocal
-      );
+      uniforms['uModel.modelMat'] as mat4,
+      this.worldToLocal
+    );
 
-      vec3.copy(uniforms['uMaterial.albedo'] as vec3, this.material.albedo);
-      uniforms['uMaterial.roughness'] = this.material.roughness;
-      uniforms['uMaterial.metallic'] = this.material.metallic;
-      if (this.material.texAlbedo != null)
-        uniforms['uMaterial.texAlbedo'] = this.material.texAlbedo;
-      if (this.material.texRoughness != null)
-        uniforms['uMaterial.texRoughness'] = this.material.texRoughness;
-      if (this.material.texNormal != null)
-        uniforms['uMaterial.texNormal'] = this.material.texNormal;
+    vec3.copy(uniforms['uMaterial.albedo'] as vec3, this.material.albedo);
+    uniforms['uMaterial.roughness'] = this.material.roughness;
+    uniforms['uMaterial.metallic'] = this.material.metallic;
+    if (this.material.texAlbedo != null)
+      uniforms['uMaterial.texAlbedo'] = this.material.texAlbedo;
+    if (this.material.texRoughness != null)
+      uniforms['uMaterial.texRoughness'] = this.material.texRoughness;
+    if (this.material.texNormal != null)
+      uniforms['uMaterial.texNormal'] = this.material.texNormal;
 
-      uniforms['uMaterial.useTextures'] = this.material.texAlbedo != null;
+    uniforms['uMaterial.useTextures'] = this.material.texAlbedo != null;
+
 
     context.draw(this.geometry, shader, uniforms);
   }
