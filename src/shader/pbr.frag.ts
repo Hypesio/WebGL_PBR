@@ -38,20 +38,15 @@ uniform bool enableIBLDiffuse;
 uniform bool enableIBLSpecular;
 
 in vec3 vNormalWS;
-in vec3 fragPosition; 
+in vec3 fragPosition;
+in vec2 vUv; 
+in mat3 TBN;  
 
 vec2 cartesianToPolar(vec3 n) {
     vec2 uv;
     uv.x = atan(n.z, n.x) * RECIPROCAL_PI2 + 0.5;
     uv.y = asin(n.y) * RECIPROCAL_PI + 0.5;
     return uv;
-}
-
-vec2 sphereCoordinate(vec3 n) {
-  vec2 uv;
-  uv.x = atan(n.x) / M_PI + 0.5;
-  uv.y = asin(n.y) / M_PI + 0.5;
-  return uv;
 }
 
 // From three.js
@@ -124,11 +119,11 @@ void main()
   vec3 albedo = uMaterial.albedo;
 
   if (uMaterial.useTextures) {
-    vec2 uv = sphereCoordinate(normal); 
-    //normal = texture(uMaterial.texNormal, uv).rgb;
-    //normal = normalize(normal * 2.0 - 1.0);
-    albedo = texture(uMaterial.texAlbedo, uv).rgb;
-    roughness = texture(uMaterial.texRoughness, uv).x;
+    normal = texture(uMaterial.texNormal, vUv).rgb;
+    normal = normalize(normal * 2.0 - 1.0);
+    normal = normalize(TBN * normal);
+    albedo = texture(uMaterial.texAlbedo, vUv).rgb;
+    roughness = texture(uMaterial.texRoughness, vUv).x;
   }
 
   // **DO NOT** forget to do all your computation in linear space.
@@ -136,8 +131,8 @@ void main()
 
   vec3 viewDirection = normalize(fragPosition - viewPosition); 
 
+  // Compute dynamic color
   vec3 radiance = vec3(0, 0, 0); 
-
   for (int i = 0; i < lightCount; i++) {
     vec3 lightDirection = normalize(lights[i].position.xyz - fragPosition);
     float distanceLight = length(lights[i].position.xyz - fragPosition);
@@ -169,8 +164,7 @@ void main()
   
   vec3 ambient = (kD * diffuseIBL * float(enableIBLDiffuse) + specularIBL * float(enableIBLSpecular)) ;
   radiance += ambient; 
-  //outFragColor.rgba = vec4(normal.rgb, 1.0);
-  //radiance = irradiance;
+
   // **DO NOT** forget to apply gamma correction as last step.
   outFragColor.rgba = LinearTosRGB(vec4(radiance, 1.0));
 }

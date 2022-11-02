@@ -4,19 +4,17 @@ precision highp float;
 
 in vec3 in_position;
 in vec3 in_normal;
-#ifdef USE_UV
-  in vec2 in_uv;
-#endif // USE_UV
+in vec2 in_uv;
+in vec3 in_tangent; 
 
 /**
  * Varyings.
  */
 
 out vec3 vNormalWS;
-#ifdef USE_UV
-  out vec2 vUv;
-#endif // USE_UV
+out vec2 vUv;
 out vec3 fragPosition; 
+out mat3 TBN; 
 
 /**
  * Uniforms List
@@ -37,5 +35,15 @@ main()
   gl_Position = uModel.localToProjection * worldPos;
   vNormalWS = mat3(uModel.modelMat) * in_normal;
   fragPosition = vec3(worldPos);
+
+  // For nomal mapping
+  vec3 T = normalize(vec3(uModel.modelMat * vec4(in_tangent, 0.0))); 
+  vec3 N = normalize(vec3(uModel.modelMat * vec4(in_normal, 0.0)));
+  T = normalize(T - dot(T, N) * N);
+  vec3 B = normalize(cross(N, T));
+  TBN = mat3(T, B, N);
+
+  vUv = in_uv;
+
 }
 `;

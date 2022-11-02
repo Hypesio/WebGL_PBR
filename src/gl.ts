@@ -195,6 +195,7 @@ export class GLContext {
         positionBuffer: this._gl.createBuffer(),
         normalBuffer: this._gl.createBuffer(),
         uvBuffer: geometry.uvs != null ? this._gl.createBuffer() : null,
+        tangentBuffer: geometry.tangents != null ? this._gl.createBuffer() : null,
         indexBuffer: this._gl.createBuffer()
       } as GeometryCache;
       this._geometries.set(geometry, cache);
@@ -222,6 +223,11 @@ export class GLContext {
       gl.bindBuffer(gl.ARRAY_BUFFER, cache.uvBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, geometry.uvs, gl.STATIC_DRAW);
     }
+    if (cache.tangentBuffer != null) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, cache.tangentBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, geometry.tangents, gl.STATIC_DRAW);
+    }
+    
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cache.indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, geometry.indices, gl.STATIC_DRAW);
   }
@@ -448,14 +454,17 @@ export class GLContext {
     );
     const normalAttributeLocation = gl.getAttribLocation(program, 'in_normal');
     const uvAttributeLocation = gl.getAttribLocation(program, 'in_uv');
+    const tangentAttributeLocation = gl.getAttribLocation(program, 'in_tangent');
 
     const hasNormal =
       normalAttributeLocation != -1 && geometryCache.normalBuffer !== null;
     const hasUV = uvAttributeLocation != -1 && geometryCache.uvBuffer !== null;
+    const hasTangent = tangentAttributeLocation != -1 && geometryCache.tangentBuffer !== null;
 
     let strideComp = 3;
     strideComp = hasNormal ? strideComp + 3 : strideComp;
     strideComp = hasUV ? strideComp + 2 : strideComp;
+    strideComp = hasTangent ? strideComp + 3: strideComp;
 
     const byteSize = Float32Array.BYTES_PER_ELEMENT;
 
@@ -498,6 +507,20 @@ export class GLContext {
         gl.FLOAT,
         false,
         2 * byteSize,
+        0
+      );
+    }
+
+    if (hasTangent) {
+      // Only setup the tangent attribute if the geometry has tangents.
+      gl.enableVertexAttribArray(tangentAttributeLocation);
+      gl.bindBuffer(gl.ARRAY_BUFFER, geometryCache.tangentBuffer);
+      gl.vertexAttribPointer(
+        tangentAttributeLocation,
+        3,
+        gl.FLOAT,
+        false,
+        3 * byteSize,
         0
       );
     }
@@ -681,6 +704,7 @@ interface GeometryCache {
   normalBuffer: WebGLBuffer;
   uvBuffer: WebGLBuffer | null;
   indexBuffer: WebGLBuffer;
+  tangentBuffer: WebGLBuffer;
   indexType: number;
 }
 
